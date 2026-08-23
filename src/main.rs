@@ -58,8 +58,8 @@ async fn event_handler(
             println!("Logged in as {}", data_about_bot.user.name);
         }
         FullEvent::InteractionCreate { interaction } => {
-            if let Interaction::Component(component) = interaction {
-                if component.data.custom_id == "captcha" {
+            if let Interaction::Component(component) = interaction
+                && component.data.custom_id == "captcha" {
                     component
                         .create_response(
                             &ctx.http,
@@ -68,7 +68,7 @@ async fn event_handler(
                             ),
                         )
                         .await?;
-                    if let Some(role_id) =
+                    if let Some(_role_id) =
                         get_role_id_by_guild_id(&data.pool, component.guild_id.unwrap().into())
                             .await?
                     {
@@ -84,7 +84,6 @@ async fn event_handler(
                             .await?;
                     }
                 }
-            }
         }
         _ => {}
     }
