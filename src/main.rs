@@ -1,6 +1,9 @@
 use std::env;
 
-use poise::serenity_prelude::{self as serenity, CreateButton, CreateMessage, Role};
+use poise::{
+    Framework,
+    serenity_prelude::{self as serenity, Content, CreateButton, CreateMessage, FullEvent, Role},
+};
 
 use crate::{data::Data, db::captcha::set_captcha};
 
@@ -37,6 +40,21 @@ async fn captcha(ctx: Context<'_>, role: Role) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn event_handler(
+    ctx: &serenity::Context,
+    event: &FullEvent,
+    _frame: FrameworkContext<Data, anyhow::Error>,
+    data: &Data,
+) -> anyhow::Result<()> {
+    match event {
+        FullEvent::Ready { data_about_bot, .. } => {
+            println!("Logged in as {}", data_about_bot.user.name);
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
@@ -48,6 +66,9 @@ async fn main() -> anyhow::Result<()> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![age(), captcha()],
+            event_handler: |ctx, event, framework, data| {
+                Box::pin(event_handler(ctx, event, framework, data))
+            },
             ..Default::default()
         })
         .setup(|ctx, _ready, framework| {
