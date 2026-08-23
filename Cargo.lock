@@ -1060,6 +1060,7 @@ dependencies = [
  "captchas",
  "dotenvy",
  "poise",
+ "rand 0.10.2",
  "sqlx",
  "tokio",
 ]

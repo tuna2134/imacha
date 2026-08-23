@@ -1,11 +1,11 @@
-use std::env;
+use std::{env, time::Duration};
 
 use captchas::ImageCaptcha;
 use poise::{
-    FrameworkContext,
+    FrameworkContext, Modal,
     serenity_prelude::{
         self as serenity, CreateAttachment, CreateButton, CreateInteractionResponseFollowup,
-        CreateInteractionResponseMessage, CreateMessage, FullEvent, Interaction, Role,
+        CreateInteractionResponseMessage, CreateMessage, FullEvent, Interaction, Role, RoleId,
     },
 };
 
@@ -18,6 +18,14 @@ mod data;
 mod db;
 
 type Context<'a> = poise::Context<'a, data::Data, anyhow::Error>;
+
+struct ContextRef<'a>(&'a serenity::Context);
+
+impl AsRef<serenity::Context> for ContextRef<'_> {
+    fn as_ref(&self) -> &serenity::Context {
+        self.0
+    }
+}
 
 /// Displays your or another user's account creation date
 #[poise::command(slash_command, prefix_command)]
@@ -47,6 +55,14 @@ async fn captcha(ctx: Context<'_>, role: Role) -> anyhow::Result<()> {
     Ok(())
 }
 
+#[derive(Debug, Modal)]
+struct CaptchaModal {
+    #[name = "認証コード"]
+    #[placeholder = "認証コードを入力してください。"]
+    #[min_length = 6]
+    code: String,
+}
+
 async fn event_handler(
     ctx: &serenity::Context,
     event: &FullEvent,
@@ -59,31 +75,58 @@ async fn event_handler(
         }
         FullEvent::InteractionCreate { interaction } => {
             if let Interaction::Component(component) = interaction
-                && component.data.custom_id == "captcha" {
+                && component.data.custom_id == "captcha"
+            {
+                component
+                    .create_response(
+                        &ctx.http,
+                        serenity::CreateInteractionResponse::Defer(
+                            CreateInteractionResponseMessage::new().ephemeral(true),
+                        ),
+                    )
+                    .await?;
+                if let Some(role_id) =
+                    get_role_id_by_guild_id(&data.pool, component.guild_id.unwrap().into()).await?
+                {
+                    let captcha = ImageCaptcha::default();
+                    let text: i32 = rand::random_range(100000..=999999);
+                    let img = captcha.generate(&text.to_string())?;
+                    let custom_id = format!("captcha:{}", interaction.id());
                     component
-                        .create_response(
+                        .create_followup(
                             &ctx.http,
-                            serenity::CreateInteractionResponse::Defer(
-                                CreateInteractionResponseMessage::new().ephemeral(true),
-                            ),
+                            CreateInteractionResponseFollowup::new()
+                                .add_file(CreateAttachment::bytes(img, "captcha.png"))
+                                .content(
+                                    "認証コードは以下の画像です。認証を押して、入力してください。",
+                                )
+                                .button(CreateButton::new(custom_id.clone()).label("認証する。")),
                         )
                         .await?;
-                    if let Some(_role_id) =
-                        get_role_id_by_guild_id(&data.pool, component.guild_id.unwrap().into())
-                            .await?
-                    {
-                        let captcha = ImageCaptcha::default();
-                        let img = captcha.generate("938223")?;
-                        component
-                            .create_followup(
-                                &ctx.http,
-                                CreateInteractionResponseFollowup::new()
-                                    .add_file(CreateAttachment::bytes(img, "captcha.png"))
-                                    .content("認証コードは以下の画像です。認証を押して、入力してください。"),
-                            )
-                            .await?;
+                    let interaction = serenity::collector::ComponentInteractionCollector::new(ctx)
+                        .timeout(Duration::from_secs(60))
+                        .filter(move |interaction| interaction.data.custom_id == custom_id)
+                        .await;
+                    if let Some(interaction) = interaction {
+                        let result = poise::modal::execute_modal_on_component_interaction::<
+                            CaptchaModal,
+                        >(
+                            ContextRef(ctx), interaction, None, None
+                        )
+                        .await?;
+                        if result.unwrap().code == text.to_string() {
+                            ctx.http
+                                .add_member_role(
+                                    component.guild_id.unwrap(),
+                                    component.user.id,
+                                    RoleId::from(role_id as u64),
+                                    Some("認証に成功しました。"),
+                                )
+                                .await?;
+                        }
                     }
                 }
+            }
         }
         _ => {}
     }
