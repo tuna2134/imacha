@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO captcha (guild_id, role_id) VALUES ($1, $2)\n        ON CONFLICT(guild_id)\n        DO UPDATE SET role_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5415da4ccbe9a13d2d440fe4ed450536aa2836c17c65c2d77d7b7a8fcb336732"
+}
