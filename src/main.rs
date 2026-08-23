@@ -5,7 +5,7 @@ use poise::{
     FrameworkContext,
     serenity_prelude::{
         self as serenity, CreateAttachment, CreateButton, CreateInteractionResponseFollowup,
-        CreateMessage, FullEvent, Interaction, Role,
+        CreateInteractionResponseMessage, CreateMessage, FullEvent, Interaction, Role,
     },
 };
 
@@ -63,7 +63,9 @@ async fn event_handler(
                     component
                         .create_response(
                             &ctx.http,
-                            serenity::CreateInteractionResponse::Acknowledge,
+                            serenity::CreateInteractionResponse::Defer(
+                                CreateInteractionResponseMessage::new().ephemeral(true),
+                            ),
                         )
                         .await?;
                     if let Some(role_id) =
@@ -76,7 +78,8 @@ async fn event_handler(
                             .create_followup(
                                 &ctx.http,
                                 CreateInteractionResponseFollowup::new()
-                                    .add_file(CreateAttachment::bytes(img, "captcha.png")),
+                                    .add_file(CreateAttachment::bytes(img, "captcha.png"))
+                                    .content("認証コードは以下の画像です。認証を押して、入力してください。"),
                             )
                             .await?;
                     }
