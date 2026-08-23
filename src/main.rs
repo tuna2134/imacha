@@ -1,11 +1,18 @@
 use std::env;
 
+use captchas::ImageCaptcha;
 use poise::{
-    Framework,
-    serenity_prelude::{self as serenity, Content, CreateButton, CreateMessage, FullEvent, Role},
+    FrameworkContext,
+    serenity_prelude::{
+        self as serenity, CreateAttachment, CreateButton, CreateInteractionResponseFollowup,
+        CreateMessage, FullEvent, Interaction, Role,
+    },
 };
 
-use crate::{data::Data, db::captcha::set_captcha};
+use crate::{
+    data::Data,
+    db::captcha::{get_role_id_by_guild_id, set_captcha},
+};
 
 mod data;
 mod db;
@@ -43,12 +50,38 @@ async fn captcha(ctx: Context<'_>, role: Role) -> anyhow::Result<()> {
 async fn event_handler(
     ctx: &serenity::Context,
     event: &FullEvent,
-    _frame: FrameworkContext<Data, anyhow::Error>,
+    _frame: FrameworkContext<'_, Data, anyhow::Error>,
     data: &Data,
 ) -> anyhow::Result<()> {
     match event {
         FullEvent::Ready { data_about_bot, .. } => {
             println!("Logged in as {}", data_about_bot.user.name);
+        }
+        FullEvent::InteractionCreate { interaction } => {
+            if let Interaction::Component(component) = interaction {
+                if component.data.custom_id == "captcha" {
+                    component
+                        .create_response(
+                            &ctx.http,
+                            serenity::CreateInteractionResponse::Acknowledge,
+                        )
+                        .await?;
+                    if let Some(role_id) =
+                        get_role_id_by_guild_id(&data.pool, component.guild_id.unwrap().into())
+                            .await?
+                    {
+                        let captcha = ImageCaptcha::default();
+                        let img = captcha.generate("938223")?;
+                        component
+                            .create_followup(
+                                &ctx.http,
+                                CreateInteractionResponseFollowup::new()
+                                    .add_file(CreateAttachment::bytes(img, "captcha.png")),
+                            )
+                            .await?;
+                    }
+                }
+            }
         }
         _ => {}
     }
