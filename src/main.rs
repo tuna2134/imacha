@@ -123,6 +123,7 @@ async fn event_handler(
                                     Some("認証に成功しました。"),
                                 )
                                 .await?;
+                            println!("認証に成功したため、ロールをユーザーに渡しました。");
                         }
                     }
                 }
