@@ -1,9 +1,18 @@
 services:
     db:
         image: postgres
-        ports:
-          - 5432:5432
         environment:
-          POSTGRES_PASSWORD: dev
-          POSTGRES_USER: dev
-          POSTGRES_DB: imacha
+            POSTGRES_PASSWORD: dev
+            POSTGRES_USER: dev
+            POSTGRES_DB: imacha
+        networks: [default]
+    bot:
+        build:
+            context: .
+        environment:
+            DATABASE_URL: postgres://dev:dev@db:5432/imacha
+            DISCORD_TOKEN: ${DISCORD_TOKEN}
+        networks: [default]
+
+networks:
+  default:
