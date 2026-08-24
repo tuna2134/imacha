@@ -2,7 +2,7 @@ use std::{env, time::Duration};
 
 use captchas::ImageCaptcha;
 use poise::{
-    FrameworkContext, Modal,
+    CreateReply, FrameworkContext, Modal,
     serenity_prelude::{
         self as serenity, CreateAttachment, CreateButton, CreateInteractionResponseFollowup,
         CreateInteractionResponseMessage, CreateMessage, FullEvent, Interaction, Role, RoleId,
@@ -27,19 +27,8 @@ impl AsRef<serenity::Context> for ContextRef<'_> {
     }
 }
 
-/// Displays your or another user's account creation date
-#[poise::command(slash_command, prefix_command)]
-async fn age(
-    ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<serenity::User>,
-) -> Result<(), anyhow::Error> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
-    ctx.say(response).await?;
-    Ok(())
-}
-
-#[poise::command(slash_command)]
+/// 画像認証のためのパネルを作成します。
+#[poise::command(slash_command, required_permissions = "MANAGE_ROLES")]
 async fn captcha(ctx: Context<'_>, role: Role) -> anyhow::Result<()> {
     set_captcha(
         &ctx.data().pool,
@@ -51,7 +40,8 @@ async fn captcha(ctx: Context<'_>, role: Role) -> anyhow::Result<()> {
         .button(CreateButton::new("captcha").label("認証"))
         .content("認証始めるにはボタンを押してください");
     ctx.channel_id().send_message(ctx.http(), msg).await?;
-    ctx.say("Ok").await?;
+    ctx.send(CreateReply::default().ephemeral(true).content("Ok"))
+        .await?;
     Ok(())
 }
 
@@ -163,7 +153,7 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![age(), captcha()],
+            commands: vec![captcha()],
             event_handler: |ctx, event, framework, data| {
                 Box::pin(event_handler(ctx, event, framework, data))
             },
