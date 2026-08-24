@@ -92,7 +92,7 @@ async fn event_handler(
                     let text: i32 = rand::random_range(100000..=999999);
                     let img = captcha.generate(&text.to_string())?;
                     let custom_id = format!("captcha:{}", interaction.id());
-                    component
+                    let msg = component
                         .create_followup(
                             &ctx.http,
                             CreateInteractionResponseFollowup::new()
@@ -124,6 +124,25 @@ async fn event_handler(
                                 )
                                 .await?;
                             println!("認証に成功したため、ロールをユーザーに渡しました。");
+                            component
+                                .edit_followup(
+                                    &ctx.http,
+                                    msg.id,
+                                    CreateInteractionResponseFollowup::new()
+                                        .content("認証完了しました。")
+                                        .components(Vec::new()),
+                                )
+                                .await?;
+                        } else {
+                            component
+                                .edit_followup(
+                                    &ctx.http,
+                                    msg.id,
+                                    CreateInteractionResponseFollowup::new()
+                                        .content("認証コードが間違っています。再度認証をやり直してください。")
+                                        .components(Vec::new()),
+                                )
+                                .await?;
                         }
                     }
                 }
