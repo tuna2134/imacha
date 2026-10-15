@@ -7,7 +7,7 @@ edition = "2024"
 anyhow = "1.0.104"
 captchas = { git = "https://github.com/tuna2134-workspace/captchas", version = "0.1.0" }
 dotenvy = "0.15.7"
-poise = "0.6.2"
+poise = "0.7.0"
 rand = "0.10.2"
 sqlx = { version = "0.9.0", features = ["postgres", "runtime-tokio"] }
 tokio = { version = "1.53.1", features = ["full"] }
